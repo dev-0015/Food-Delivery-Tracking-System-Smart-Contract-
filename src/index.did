@@ -1,0 +1,63 @@
+type Client = record {
+  id : text;
+  updated_at : opt nat64;
+  name : text;
+  address : text;
+  created_date : nat64;
+};
+type DeliveryResponse = record { msg : text; total_price : float64 };
+type FoodItem = record {
+  id : text;
+  updated_at : opt nat64;
+  name : text;
+  description : text;
+  price : text;
+  created_date : nat64;
+};
+type FoodPayload = record { name : text; description : text; price : text };
+type Order = record {
+  id : text;
+  updated_at : opt nat64;
+  total_price : text;
+  items : vec text;
+  client_id : text;
+  created_date : nat64;
+  is_delivered : bool;
+};
+type OrderPayload = record { items : vec text; client_id : text };
+type Review = record {
+  id : text;
+  updated_at : opt nat64;
+  comment : text;
+  rating : float64;
+  order_id : text;
+  created_date : nat64;
+};
+type ReviewPayload = record {
+  comment : text;
+  rating : float64;
+  order_id : text;
+};
+type _AzleResult = variant { Ok : vec Client; Err : text };
+type _AzleResult_1 = variant { Ok : vec FoodItem; Err : text };
+type _AzleResult_2 = variant { Ok : vec Order; Err : text };
+type _AzleResult_3 = variant { Ok : vec Review; Err : text };
+service : () -> {
+  addClient : (text, text) -> (text);
+  addFoodItem : (FoodPayload) -> (text);
+  addReview : (ReviewPayload) -> (text);
+  deleteClient : (text) -> (text);
+  deleteFoodItem : (text) -> (text);
+  deleteOrder : (text) -> (text);
+  deleteReview : (text) -> (text);
+  getClients : () -> (_AzleResult) query;
+  getFoodItems : () -> (_AzleResult_1) query;
+  getOrders : () -> (_AzleResult_2) query;
+  getReviews : () -> (_AzleResult_3) query;
+  initFoodDeliverySystem : () -> (text);
+  placeOrder : (OrderPayload) -> (DeliveryResponse);
+  updateClient : (text, text, text) -> (text);
+  updateFoodItem : (text, FoodPayload) -> (text);
+  updateOrder : (text, vec text) -> (text);
+  updateReview : (text, float64, text) -> (text);
+}
