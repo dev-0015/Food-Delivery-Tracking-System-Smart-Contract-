@@ -141,10 +141,10 @@ $update;
 export function placeOrder(payload: OrderPayload): DeliveryResponse {
   const client = match(clientStorage.get(payload.client_id), {
     Some: (client) => client,
-    None: () => ({} as unknown as Client),
+    None: () => null,
   });
 
-  if (!client.id) {
+  if (!client) {
     return {
       msg: "Invalid client ID",
       total_price: 0,
@@ -189,9 +189,11 @@ function calculateTotalPrice(items: Vec<string>): string {
   items.forEach((itemId) => {
     const foodItem = match(foodItemStorage.get(itemId), {
       Some: (item) => item,
-      None: () => ({} as unknown as FoodItem),
+      None: () => null,
     });
-    total += parseFloat(foodItem.price);
+    if (foodItem) {
+      total += parseFloat(foodItem.price);
+    }
   });
   return total.toString();
 }
@@ -201,10 +203,10 @@ $update;
 export function updateClient(id: string, name: string, address: string): string {
   const existingClient = match(clientStorage.get(id), {
     Some: (client) => client,
-    None: () => ({} as unknown as Client),
+    None: () => null,
   });
 
-  if (existingClient.id) {
+  if (existingClient) {
     existingClient.name = name;
     existingClient.address = address;
     existingClient.updated_at = Opt.Some(ic.time());
@@ -220,10 +222,10 @@ $update;
 export function updateFoodItem(id: string, payload: FoodPayload): string {
   const existingFoodItem = match(foodItemStorage.get(id), {
     Some: (foodItem) => foodItem,
-    None: () => ({} as unknown as FoodItem),
+    None: () => null,
   });
 
-  if (existingFoodItem.id) {
+if (existingFoodItem) {
     existingFoodItem.name = payload.name;
     existingFoodItem.description = payload.description;
     existingFoodItem.price = payload.price;
@@ -260,10 +262,10 @@ $update;
 export function updateOrder(id: string, items: Vec<string>): string {
   const existingOrder = match(orderStorage.get(id), {
     Some: (order) => order,
-    None: () => ({} as unknown as Order),
+    None: () => null,
   });
 
-  if (existingOrder.id) {
+  if (existingOrder) {
     existingOrder.items = items;
     existingOrder.total_price = calculateTotalPrice(items);
     existingOrder.updated_at = Opt.Some(ic.time());
@@ -279,10 +281,10 @@ $update;
 export function updateReview(id: string, rating: number, comment: string): string {
   const existingReview = match(reviewStorage.get(id), {
     Some: (review) => review,
-    None: () => ({} as unknown as Review),
+    None: () => null,
   });
 
-  if (existingReview.id) {
+  if (existingReview) {
     existingReview.rating = rating;
     existingReview.comment = comment;
     existingReview.updated_at = Opt.Some(ic.time());
@@ -296,65 +298,25 @@ export function updateReview(id: string, rating: number, comment: string): strin
 // Function to delete a client
 $update;
 export function deleteClient(id: string): string {
-  const existingClient = match(clientStorage.get(id), {
-    Some: (client) => client,
-    None: () => ({} as unknown as Client),
-  });
-
-  if (existingClient.id) {
-    clientStorage.remove(id);
-    return `Client with ID: ${id} removed successfully`;
-  }
-
-  return "Client not found";
+  return deleteEntity(id, clientStorage);
 }
 
 // Function to delete a food item
 $update;
 export function deleteFoodItem(id: string): string {
-  const existingFoodItem = match(foodItemStorage.get(id), {
-    Some: (foodItem) => foodItem,
-    None: () => ({} as unknown as FoodItem),
-  });
-
-  if (existingFoodItem.id) {
-    foodItemStorage.remove(id);
-    return `Food item with ID: ${id} removed successfully`;
-  }
-
-  return "Food item not found";
+  return deleteEntity(id, foodItemStorage);
 }
 
 // Function to delete an order
 $update;
 export function deleteOrder(id: string): string {
-  const existingOrder = match(orderStorage.get(id), {
-    Some: (order) => order,
-    None: () => ({} as unknown as Order),
-  });
-
-  if (existingOrder.id) {
-    orderStorage.remove(id);
-    return `Order with ID: ${id} removed successfully`;
-  }
-
-  return "Order not found";
+  return deleteEntity(id, orderStorage);
 }
 
 // Function to delete a review
 $update;
 export function deleteReview(id: string): string {
-  const existingReview = match(reviewStorage.get(id), {
-    Some: (review) => review,
-    None: () => ({} as unknown as Review),
-  });
-
-  if (existingReview.id) {
-    reviewStorage.remove(id);
-    return `Review with ID: ${id} removed successfully`;
-  }
-
-  return "Review not found";
+  return deleteEntity(id, reviewStorage);
 }
 
 // Mocking the 'crypto' object for testing purposes
