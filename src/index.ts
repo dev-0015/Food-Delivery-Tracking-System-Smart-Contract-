@@ -23,6 +23,7 @@ type FoodItem = Record<{
 type Order = Record<{
   id: string;
   client_id: string;
+  driver_id: Opt<string>; // Updated to include driver_id
   items: Vec<string>;
   total_price: string;
   is_delivered: boolean;
@@ -35,6 +36,14 @@ type Review = Record<{
   order_id: string;
   rating: number;
   comment: string;
+  created_date: nat64;
+  updated_at: Opt<nat64>;
+}>;
+
+type Driver = Record<{
+  id: string;
+  name: string;
+  contact: string;
   created_date: nat64;
   updated_at: Opt<nat64>;
 }>;
@@ -61,16 +70,29 @@ type DeliveryResponse = Record<{
   total_price: number;
 }>;
 
+// New Structure for DeliveryAddress
+type DeliveryAddress = Record<{
+  id: string;
+  client_id: string;
+  street: string;
+  city: string;
+  postal_code: string;
+  created_date: nat64;
+  updated_at: Opt<nat64>;
+}>;
+
 // Creating instances of StableBTreeMap for each entity type
 const clientStorage = new StableBTreeMap<string, Client>(0, 44, 512);
 const foodItemStorage = new StableBTreeMap<string, FoodItem>(1, 44, 512);
 const orderStorage = new StableBTreeMap<string, Order>(2, 44, 512);
 const reviewStorage = new StableBTreeMap<string, Review>(3, 44, 512);
+const driverStorage = new StableBTreeMap<string, Driver>(4, 44, 512);
+const deliveryAddressStorage = new StableBTreeMap<string, DeliveryAddress>(5, 44, 512);
 
 // Function to initialize the food delivery system
 $update;
 export function initFoodDeliverySystem(): string {
-  if (!clientStorage.isEmpty() || !foodItemStorage.isEmpty() || !orderStorage.isEmpty() || !reviewStorage.isEmpty()) {
+  if (!clientStorage.isEmpty() || !foodItemStorage.isEmpty() || !orderStorage.isEmpty() || !reviewStorage.isEmpty() || !driverStorage.isEmpty()) {
     return `Food delivery system has already been initialized`;
   }
 
@@ -107,6 +129,16 @@ export function getFoodItems(): Result<Vec<FoodItem>, string> {
   return Result.Ok(foodItems);
 }
 
+// Function to get information about drivers
+$query;
+export function getDrivers(): Result<Vec<Driver>, string> {
+  const drivers = driverStorage.values();
+  if (drivers.length === 0) {
+    return Result.Err("No drivers found");
+  }
+  return Result.Ok(drivers);
+}
+
 // Function to add a new client
 $update;
 export function addClient(name: string, address: string): string {
@@ -136,6 +168,50 @@ export function addFoodItem(payload: FoodPayload): string {
   return foodItem.id;
 }
 
+// Function to add a new driver
+$update;
+export function addDriver(name: string, contact: string): string {
+  const driver = {
+    id: uuidv4(),
+    name: name,
+    contact: contact,
+    created_date: ic.time(),
+    updated_at: Opt.None,
+  };
+  driverStorage.insert(driver.id, driver);
+  return driver.id;
+}
+
+// Function to add a new delivery address
+$update;
+export function addDeliveryAddress(clientId: string, street: string, city: string, postalCode: string): Result<string, string> {
+  if (!street || !city || !postalCode) {
+    return Result.Err("Please provide valid values for street, city, and postal code");
+  }
+
+  const deliveryAddress = {
+    id: uuidv4(),
+    client_id: clientId,
+    street: street,
+    city: city,
+    postal_code: postalCode,
+    created_date: ic.time(),
+    updated_at: Opt.None,
+  };
+  deliveryAddressStorage.insert(deliveryAddress.id, deliveryAddress);
+  return Result.Ok(deliveryAddress.id);
+}
+
+// Function to get delivery addresses for a client
+$query;
+export function getDeliveryAddresses(clientId: string): Result<Vec<DeliveryAddress>, string> {
+  const addresses = deliveryAddressStorage.values().filter((address) => address.client_id === clientId);
+  if (addresses.length === 0) {
+    return Result.Err("No delivery addresses found for the client");
+  }
+  return Result.Ok(addresses);
+}
+
 // Function to place a new order
 $update;
 export function placeOrder(payload: OrderPayload): DeliveryResponse {
@@ -154,6 +230,7 @@ export function placeOrder(payload: OrderPayload): DeliveryResponse {
   const order = {
     id: uuidv4(),
     client_id: client.id,
+    driver_id: Opt.None, // Default value for driver_id
     items: payload.items,
     total_price: calculateTotalPrice(payload.items),
     is_delivered: false,
@@ -166,6 +243,24 @@ export function placeOrder(payload: OrderPayload): DeliveryResponse {
     msg: `Order placed successfully. Total Price: $${order.total_price}`,
     total_price: parseFloat(order.total_price),
   };
+}
+
+// Function to assign a driver to an order
+$update;
+export function assignDriver(orderId: string, driverId: string): string {
+  const existingOrder = match(orderStorage.get(orderId), {
+    Some: (order) => order,
+    None: () => ({} as unknown as Order),
+  });
+
+  if (existingOrder.id) {
+    existingOrder.driver_id = Opt.Some(driverId);
+    existingOrder.updated_at = Opt.Some(ic.time());
+    orderStorage.insert(existingOrder.id, existingOrder);
+    return existingOrder.id;
+  }
+
+  return "Order not found";
 }
 
 // Function to add a review for an order
@@ -233,6 +328,25 @@ export function updateFoodItem(id: string, payload: FoodPayload): string {
   }
 
   return "Food item not found";
+}
+
+// Function to update driver information
+$update;
+export function updateDriver(id: string, name: string, contact: string): string {
+  const existingDriver = match(driverStorage.get(id), {
+    Some: (driver) => driver,
+    None: () => ({} as unknown as Driver),
+  });
+
+  if (existingDriver.id) {
+    existingDriver.name = name;
+    existingDriver.contact = contact;
+    existingDriver.updated_at = Opt.Some(ic.time());
+    driverStorage.insert(existingDriver.id, existingDriver);
+    return existingDriver.id;
+  }
+
+  return "Driver not found";
 }
 
 // Function to get information about orders
@@ -355,6 +469,47 @@ export function deleteReview(id: string): string {
   }
 
   return "Review not found";
+}
+
+// Function to delete a driver
+$update;
+export function deleteDriver(id: string): string {
+  const existingDriver = match(driverStorage.get(id), {
+    Some: (driver) => driver,
+    None: () => ({} as unknown as Driver),
+  });
+
+  if (existingDriver.id) {
+    driverStorage.remove(id);
+    return `Driver with ID: ${id} removed successfully`;
+  }
+
+  return "Driver not found";
+}
+
+// Function to update delivery address information
+$update;
+export function updateDeliveryAddress(id: string, street: string, city: string, postalCode: string): Result<string, string> {
+  const existingAddress = match(deliveryAddressStorage.get(id), {
+    Some: (address) => address,
+    None: () => ({} as unknown as DeliveryAddress),
+  });
+
+  if (!existingAddress.id) {
+    return Result.Err("Delivery address not found");
+  }
+
+  if (!street || !city || !postalCode) {
+    return Result.Err("Please provide valid values for street, city, and postal code");
+  }
+
+  existingAddress.street = street;
+  existingAddress.city = city;
+  existingAddress.postal_code = postalCode;
+  existingAddress.updated_at = Opt.Some(ic.time());
+
+  deliveryAddressStorage.insert(existingAddress.id, existingAddress);
+  return Result.Ok(existingAddress.id);
 }
 
 // Mocking the 'crypto' object for testing purposes

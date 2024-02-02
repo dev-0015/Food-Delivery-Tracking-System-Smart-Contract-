@@ -5,7 +5,23 @@ type Client = record {
   address : text;
   created_date : nat64;
 };
+type DeliveryAddress = record {
+  id : text;
+  updated_at : opt nat64;
+  street : text;
+  city : text;
+  postal_code : text;
+  client_id : text;
+  created_date : nat64;
+};
 type DeliveryResponse = record { msg : text; total_price : float64 };
+type Driver = record {
+  id : text;
+  updated_at : opt nat64;
+  contact : text;
+  name : text;
+  created_date : nat64;
+};
 type FoodItem = record {
   id : text;
   updated_at : opt nat64;
@@ -19,6 +35,7 @@ type Order = record {
   id : text;
   updated_at : opt nat64;
   total_price : text;
+  driver_id : opt text;
   items : vec text;
   client_id : text;
   created_date : nat64;
@@ -38,25 +55,36 @@ type ReviewPayload = record {
   rating : float64;
   order_id : text;
 };
-type _AzleResult = variant { Ok : vec Client; Err : text };
-type _AzleResult_1 = variant { Ok : vec FoodItem; Err : text };
-type _AzleResult_2 = variant { Ok : vec Order; Err : text };
-type _AzleResult_3 = variant { Ok : vec Review; Err : text };
+type _AzleResult = variant { Ok : text; Err : text };
+type _AzleResult_1 = variant { Ok : vec Client; Err : text };
+type _AzleResult_2 = variant { Ok : vec DeliveryAddress; Err : text };
+type _AzleResult_3 = variant { Ok : vec Driver; Err : text };
+type _AzleResult_4 = variant { Ok : vec FoodItem; Err : text };
+type _AzleResult_5 = variant { Ok : vec Order; Err : text };
+type _AzleResult_6 = variant { Ok : vec Review; Err : text };
 service : () -> {
   addClient : (text, text) -> (text);
+  addDeliveryAddress : (text, text, text, text) -> (_AzleResult);
+  addDriver : (text, text) -> (text);
   addFoodItem : (FoodPayload) -> (text);
   addReview : (ReviewPayload) -> (text);
+  assignDriver : (text, text) -> (text);
   deleteClient : (text) -> (text);
+  deleteDriver : (text) -> (text);
   deleteFoodItem : (text) -> (text);
   deleteOrder : (text) -> (text);
   deleteReview : (text) -> (text);
-  getClients : () -> (_AzleResult) query;
-  getFoodItems : () -> (_AzleResult_1) query;
-  getOrders : () -> (_AzleResult_2) query;
-  getReviews : () -> (_AzleResult_3) query;
+  getClients : () -> (_AzleResult_1) query;
+  getDeliveryAddresses : (text) -> (_AzleResult_2) query;
+  getDrivers : () -> (_AzleResult_3) query;
+  getFoodItems : () -> (_AzleResult_4) query;
+  getOrders : () -> (_AzleResult_5) query;
+  getReviews : () -> (_AzleResult_6) query;
   initFoodDeliverySystem : () -> (text);
   placeOrder : (OrderPayload) -> (DeliveryResponse);
   updateClient : (text, text, text) -> (text);
+  updateDeliveryAddress : (text, text, text, text) -> (_AzleResult);
+  updateDriver : (text, text, text) -> (text);
   updateFoodItem : (text, FoodPayload) -> (text);
   updateOrder : (text, vec text) -> (text);
   updateReview : (text, float64, text) -> (text);
