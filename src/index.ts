@@ -18,6 +18,7 @@ type FoodItem = Record<{
   price: string;
   created_date: nat64;
   updated_at: Opt<nat64>;
+  inventory: number;
 }>;
 
 type Order = Record<{
@@ -70,6 +71,14 @@ type DeliveryResponse = Record<{
   total_price: number;
 }>;
 
+// New Structure for Inventory
+type Inventory = Record<{
+  food_item_id: string;
+  quantity: number;
+  created_date: nat64;
+  updated_at: Opt<nat64>;
+}>;
+
 // New Structure for DeliveryAddress
 type DeliveryAddress = Record<{
   id: string;
@@ -87,6 +96,7 @@ const foodItemStorage = new StableBTreeMap<string, FoodItem>(1, 44, 512);
 const orderStorage = new StableBTreeMap<string, Order>(2, 44, 512);
 const reviewStorage = new StableBTreeMap<string, Review>(3, 44, 512);
 const driverStorage = new StableBTreeMap<string, Driver>(4, 44, 512);
+const inventoryStorage = new StableBTreeMap<string, Inventory>(6, 44, 512);
 const deliveryAddressStorage = new StableBTreeMap<string, DeliveryAddress>(5, 44, 512);
 
 // Function to initialize the food delivery system
@@ -153,9 +163,13 @@ export function addClient(name: string, address: string): string {
   return client.id;
 }
 
-// Function to add a new food item
+// Function to add a new food item with initial inventory
 $update;
-export function addFoodItem(payload: FoodPayload): string {
+export function addFoodItemWithInventory(payload: FoodPayload, initialInventory: number): Result<string, string> {
+  if (!payload.name || !payload.description || !payload.price) {
+    return Result.Err("Please provide valid values for name, description, and price");
+  }
+
   const foodItem = {
     id: uuidv4(),
     name: payload.name,
@@ -163,9 +177,20 @@ export function addFoodItem(payload: FoodPayload): string {
     price: payload.price,
     created_date: ic.time(),
     updated_at: Opt.None,
+    inventory: initialInventory,
   };
   foodItemStorage.insert(foodItem.id, foodItem);
-  return foodItem.id;
+
+  // Add inventory entry
+  const inventory = {
+    food_item_id: foodItem.id,
+    quantity: initialInventory,
+    created_date: ic.time(),
+    updated_at: Opt.None,
+  };
+  inventoryStorage.insert(inventory.food_item_id, inventory);
+
+  return Result.Ok(foodItem.id);
 }
 
 // Function to add a new driver
@@ -510,6 +535,35 @@ export function updateDeliveryAddress(id: string, street: string, city: string, 
 
   deliveryAddressStorage.insert(existingAddress.id, existingAddress);
   return Result.Ok(existingAddress.id);
+}
+
+// Function to get information about inventory
+$query;
+export function getInventory(): Result<Vec<Inventory>, string> {
+  const inventory = inventoryStorage.values();
+  if (inventory.length === 0) {
+    return Result.Err("No inventory found");
+  }
+  return Result.Ok(inventory);
+}
+
+// Function to update inventory
+$update;
+export function updateInventory(foodItemId: string, quantity: number): Result<string, string> {
+  const existingInventory = match(inventoryStorage.get(foodItemId), {
+    Some: (inv) => inv,
+    None: () => ({} as unknown as Inventory),
+  });
+
+  if (!existingInventory.food_item_id) {
+    return Result.Err("Inventory not found");
+  }
+
+  existingInventory.quantity = quantity;
+  existingInventory.updated_at = Opt.Some(ic.time());
+
+  inventoryStorage.insert(existingInventory.food_item_id, existingInventory);
+  return Result.Ok(existingInventory.food_item_id);
 }
 
 // Mocking the 'crypto' object for testing purposes

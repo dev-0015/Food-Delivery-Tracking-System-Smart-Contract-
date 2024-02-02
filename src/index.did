@@ -25,12 +25,19 @@ type Driver = record {
 type FoodItem = record {
   id : text;
   updated_at : opt nat64;
+  inventory : float64;
   name : text;
   description : text;
   price : text;
   created_date : nat64;
 };
 type FoodPayload = record { name : text; description : text; price : text };
+type Inventory = record {
+  updated_at : opt nat64;
+  quantity : float64;
+  created_date : nat64;
+  food_item_id : text;
+};
 type Order = record {
   id : text;
   updated_at : opt nat64;
@@ -60,13 +67,14 @@ type _AzleResult_1 = variant { Ok : vec Client; Err : text };
 type _AzleResult_2 = variant { Ok : vec DeliveryAddress; Err : text };
 type _AzleResult_3 = variant { Ok : vec Driver; Err : text };
 type _AzleResult_4 = variant { Ok : vec FoodItem; Err : text };
-type _AzleResult_5 = variant { Ok : vec Order; Err : text };
-type _AzleResult_6 = variant { Ok : vec Review; Err : text };
+type _AzleResult_5 = variant { Ok : vec Inventory; Err : text };
+type _AzleResult_6 = variant { Ok : vec Order; Err : text };
+type _AzleResult_7 = variant { Ok : vec Review; Err : text };
 service : () -> {
   addClient : (text, text) -> (text);
   addDeliveryAddress : (text, text, text, text) -> (_AzleResult);
   addDriver : (text, text) -> (text);
-  addFoodItem : (FoodPayload) -> (text);
+  addFoodItemWithInventory : (FoodPayload, float64) -> (_AzleResult);
   addReview : (ReviewPayload) -> (text);
   assignDriver : (text, text) -> (text);
   deleteClient : (text) -> (text);
@@ -78,14 +86,16 @@ service : () -> {
   getDeliveryAddresses : (text) -> (_AzleResult_2) query;
   getDrivers : () -> (_AzleResult_3) query;
   getFoodItems : () -> (_AzleResult_4) query;
-  getOrders : () -> (_AzleResult_5) query;
-  getReviews : () -> (_AzleResult_6) query;
+  getInventory : () -> (_AzleResult_5) query;
+  getOrders : () -> (_AzleResult_6) query;
+  getReviews : () -> (_AzleResult_7) query;
   initFoodDeliverySystem : () -> (text);
   placeOrder : (OrderPayload) -> (DeliveryResponse);
   updateClient : (text, text, text) -> (text);
   updateDeliveryAddress : (text, text, text, text) -> (_AzleResult);
   updateDriver : (text, text, text) -> (text);
   updateFoodItem : (text, FoodPayload) -> (text);
+  updateInventory : (text, float64) -> (_AzleResult);
   updateOrder : (text, vec text) -> (text);
   updateReview : (text, float64, text) -> (text);
 }
